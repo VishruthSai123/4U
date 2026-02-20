@@ -9,16 +9,16 @@ import { Volume2, VolumeX, RotateCcw, Heart, MousePointerClick } from 'lucide-re
 
 // --- Constants ---
 const MESSAGES = [
-  "Forever mine",
-  "Only you",
-  "Love you more",
-  "My world",
-  "Stay close",
-  "Heart's desire",
-  "Infinite love",
-  "You are magic",
-  "Soulmate",
-  "Always & Forever"
+  "You're breathtaking",
+  "My favorite 'what if'",
+  "Effortlessly beautiful",
+  "Smiling at your texts",
+  "my best friend",
+  "Simply magnetic",
+  "Thinking of you always",
+  "u r more than a friend",
+  "try to get it",
+  "I'm falling for you"
 ];
 
 const COLORS = [
@@ -44,6 +44,9 @@ interface Particle {
   driftSpeed: number;
   isPopped: boolean;
   message: string;
+  tx?: number;
+  ty?: number;
+  tz?: number;
 }
 
 interface BurstParticle {
@@ -82,6 +85,7 @@ export default function App() {
   const [activeMessage, setActiveMessage] = useState<RevealedMessage | null>(null);
   const [isSoundEnabled, setIsSoundEnabled] = useState(false);
   const [allPopped, setAllPopped] = useState(false);
+  const [hasStarted, setHasStarted] = useState(false);
   const [remainingCount, setRemainingCount] = useState(10);
   
   const particlesRef = useRef<Particle[]>([]);
@@ -198,18 +202,18 @@ export default function App() {
     // Exactly 10 hearts with unique messages and collision avoidance
     const count = 10;
     const particles: Particle[] = [];
-    const range = 600;
-    const minDistance = 250; // Ensure hearts don't collide
+    const range = 700;
+    const minDistance = 350; // Increased distance to ensure hearts don't collide
 
     for (let i = 0; i < count; i++) {
       let x, y, z;
       let attempts = 0;
       let colliding = true;
 
-      while (colliding && attempts < 100) {
-        x = (Math.random() - 0.5) * range * 1.5;
-        y = (Math.random() - 0.5) * range * 1.2;
-        z = (Math.random() - 0.5) * range * 1.5;
+      while (colliding && attempts < 200) {
+        x = (Math.random() - 0.5) * range * 1.8;
+        y = (Math.random() - 0.5) * range * 1.4;
+        z = (Math.random() - 0.5) * range * 1.8;
         
         colliding = particles.some(p => {
           const dx = p.x - x!;
@@ -330,47 +334,33 @@ export default function App() {
       });
 
       // --- Hearts ---
+      const time = Date.now() * 0.001;
       const activeParticles = particlesRef.current.filter(p => !p.isPopped);
-      const sortedParticles = activeParticles.map(p => {
-        let tx = p.x * cosY + p.z * sinY;
-        let tz = -p.x * sinY + p.z * cosY;
-        let ty = p.y * cosX - tz * sinX;
-        tz = p.y * sinX + tz * cosX;
-        return { ...p, tx, ty, tz };
-      }).sort((a, b) => b.tz - a.tz);
-
-      sortedParticles.forEach((p) => {
+      
+      // Update physics and calculate projection
+      activeParticles.forEach(p => {
+        p.vx += Math.sin(time + p.id) * 0.005;
+        p.vy += Math.cos(time * 0.8 + p.id) * 0.005;
+        p.vz += Math.sin(time * 0.5 + p.id) * 0.005;
         p.x += p.vx; p.y += p.vy; p.z += p.vz;
         p.vx *= 0.95; p.vy *= 0.95; p.vz *= 0.95;
+
+        p.tx = p.x * cosY + p.z * sinY;
+        p.tz = -p.x * sinY + p.z * cosY;
+        p.ty = p.y * cosX - p.tz * sinX;
+        p.tz = p.y * sinX + p.tz * cosX;
+      });
+
+      // Sort for depth
+      activeParticles.sort((a, b) => b.tz - a.tz);
+
+      activeParticles.forEach((p) => {
         const scale = focalLength / (focalLength + p.tz + 1000);
         if (scale > 0) {
-          const screenX = centerX + p.tx * scale;
-          const screenY = centerY + p.ty * scale;
+          const screenX = centerX + p.tx! * scale;
+          const screenY = centerY + p.ty! * scale;
           const screenScale = p.size * scale;
           drawHeart(ctx, screenX, screenY, screenScale, p.color, p.opacity * scale);
-        }
-      });
-
-      // --- Sync Active Message ---
-      setActiveMessage(prev => {
-        if (!prev) return null;
-        let tx = prev.x3d * cosY + prev.z3d * sinY;
-        let tz = -prev.x3d * sinY + prev.z3d * cosY;
-        let ty = prev.y3d * cosX - tz * sinX;
-        tz = prev.y3d * sinX + tz * cosX;
-        const scale = focalLength / (focalLength + tz + 1000);
-        return {
-          ...prev,
-          screenX: centerX + tx * scale,
-          screenY: centerY + ty * scale
-        };
-      });
-
-      particlesRef.current.forEach(p => {
-        const s = sortedParticles.find(sp => sp.id === p.id);
-        if (s) {
-          p.x = s.x; p.y = s.y; p.z = s.z;
-          p.vx = s.vx; p.vy = s.vy; p.vz = s.vz;
         }
       });
 
@@ -508,6 +498,34 @@ export default function App() {
     >
       <canvas ref={canvasRef} className="absolute inset-0 w-full h-full cursor-move" onPointerDown={onPointerDown} />
 
+      {/* Start Screen */}
+      <AnimatePresence>
+        {!hasStarted && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md"
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              className="text-center p-8"
+            >
+              <h1 className="text-white font-serif italic text-4xl sm:text-6xl mb-8 tracking-tight">
+                Are you ready?
+              </h1>
+              <button
+                onClick={() => setHasStarted(true)}
+                className="px-12 py-4 rounded-full bg-white text-black font-medium text-lg hover:bg-white/90 transition-all shadow-[0_0_30px_rgba(255,255,255,0.3)]"
+              >
+                Yes
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Top Controls */}
       <div className="absolute top-6 right-6 flex flex-col gap-4 items-end">
         <button onClick={() => setIsSoundEnabled(!isSoundEnabled)} className="p-3 rounded-full bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-white/10 transition-all pointer-events-auto backdrop-blur-sm">
@@ -534,21 +552,24 @@ export default function App() {
       )}
 
       {/* Synced Revealed Message */}
-      <div className="absolute inset-0 pointer-events-none">
-        <AnimatePresence mode="wait">
+      <div className="absolute inset-0 pointer-events-none grid place-items-center z-40">
+        <AnimatePresence>
           {activeMessage && (
             <motion.div
               key={activeMessage.id}
-              initial={{ opacity: 0, scale: 0.5 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 1.2 }}
-              transition={{ duration: 0.5, ease: "backOut" }}
-              className="absolute text-white font-serif italic text-2xl sm:text-4xl whitespace-nowrap"
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ 
+                opacity: 1, 
+                scale: [1, 1.05, 1],
+              }}
+              exit={{ opacity: 0, scale: 1.1 }}
+              transition={{ 
+                opacity: { duration: 0.4 },
+                scale: { duration: 2, repeat: Infinity, ease: "easeInOut" }
+              }}
+              className="col-start-1 row-start-1 text-white font-serif italic text-xl sm:text-2xl text-center px-6 py-4 rounded-2xl bg-black/20 backdrop-blur-sm max-w-[80vw]"
               style={{
-                textShadow: '0 0 20px rgba(255,255,255,0.9), 0 0 40px rgba(255,45,85,0.8)',
-                left: activeMessage.screenX,
-                top: activeMessage.screenY,
-                x: '-50%', y: '-150%' // Offset above the heart
+                textShadow: '0 0 15px rgba(255,255,255,0.8), 0 0 30px rgba(255,45,85,0.6)',
               }}
             >
               {activeMessage.text}
@@ -578,7 +599,7 @@ export default function App() {
                 <Heart size={64} className="text-[#ff0040] fill-[#ff0040]" />
               </motion.div>
               <h2 className="text-white font-serif italic text-5xl sm:text-7xl mb-6 tracking-tight leading-tight">
-                You Are My Favourite
+                You Are My Favourite Person
               </h2>
               <p className="text-white/60 text-sm sm:text-base uppercase tracking-[0.4em] font-light mb-12">
                 Forever & Always
